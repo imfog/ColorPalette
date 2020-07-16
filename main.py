@@ -1,7 +1,11 @@
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import click
 import pandas as pd
 from sklearn.cluster import KMeans
+
+
+def get_hex_color(color):
+	return "#%02x%02x%02x" % color
 
 
 def get_centroids(source_file, num_colors):
@@ -16,18 +20,25 @@ def get_centroids(source_file, num_colors):
 	return centroids
 
 
-def make_footer(footer_width, footer_height, centroids, text):
+def get_footer(footer_width, footer_height, centroids, text):
 	VERTICAL_PADDING = 3
 
 	footer_img = Image.new("RGB", (footer_width, footer_height), (255, 255, 255))
-	tile_width = round(footer_width / (len(centroids) + 0.5))
+	tile_width = round(footer_width / (len(centroids) + 0.3))
 	tile_height = footer_height - 2 * VERTICAL_PADDING
+
+	font = ImageFont.truetype("fonts/Roboto-Light.ttf", round(footer_height / 5))
 
 	for i, color in enumerate(centroids):
 		x_pos = round(i * (tile_width + (0.5 * tile_width) / (len(centroids) - 1)))
 		y_pos = VERTICAL_PADDING
 		tile = Image.new("RGB", (tile_width, tile_height), color)
 		footer_img.paste(tile, (x_pos, y_pos))
+
+		if text:
+			text_color = round(((sum(color) / len(color)) + 127) % 255)
+			draw = ImageDraw.Draw(footer_img)
+			draw.text((x_pos + 3, VERTICAL_PADDING), get_hex_color(color), (text_color,) * 3, font=font)
 
 	return footer_img
 
@@ -40,7 +51,7 @@ def make_image(source_file, out_file, centroids, text):
 	out_img = Image.new("RGB", (source_width, out_height), (255, 255, 255))
 	out_img.paste(source_img)
 
-	footer_img = make_footer(source_width, out_height - source_height, centroids, text)
+	footer_img = get_footer(source_width, out_height - source_height, centroids, text)
 
 	out_img.paste(footer_img, (0, source_height))
 
@@ -58,8 +69,6 @@ def main(source_file, out_file, num_colors, text):
 	centroids = get_centroids(source_file, num_colors)
 
 	make_image(source_file, out_file, centroids, text)
-
-	print("done")
 
 
 if __name__ == "__main__":
