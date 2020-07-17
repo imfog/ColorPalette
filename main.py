@@ -10,8 +10,49 @@ def get_hex_color(color):
 	return "#%02x%02x%02x" % color
 
 
-def get_centroids(source_file, num_colors, whiten):
+def get_luminosity(pixel):
+	return 0.5 * (max(pixel) + min(pixel))
+
+
+def get_saturation(pixel):
+	luminosity = get_luminosity(pixel)
+	if luminosity < 1:
+		return (max(pixel) - min(pixel)) / (1 - abs(2 * luminosity - 1))
+	else:
+		return 0
+
+
+def get_best_pixel(pixels):
+	METHOD = "MAX COLOR"
+
+	best_pixel = pixels[0]
+	for pixel in pixels:
+		if METHOD == "SATURATION":
+			if get_saturation(pixel) > get_saturation(best_pixel):
+				best_pixel = pixel
+		elif METHOD == "MAX COLOR":
+			if (max(pixel) - min(pixel)) > (max(best_pixel) - min(best_pixel)):
+				best_pixel = pixel
+
+	return best_pixel
+
+
+def get_centroids(source_file, num_colors, whiten, full):
 	pixel_data = list(Image.open(source_file).getdata())
+
+	if not full:
+		TARGET_POINTS = 600
+		if len(pixel_data) > TARGET_POINTS:
+			clump_size = int(len(pixel_data) / TARGET_POINTS)
+			small_data = []
+			for i in range(0, len(pixel_data), clump_size):
+				if i + clump_size < len(pixel_data):
+					offset = i + clump_size
+				else:
+					offset = len(pixel_data) - 1
+				clump = pixel_data[i:offset]
+				small_data.append(get_best_pixel(clump))
+		pixel_data = small_data
 
 	df = pd.DataFrame(pixel_data, columns=["red", "green", "blue"])
 
@@ -83,17 +124,19 @@ def make_image(source_file, out_file, centroids, text):
 
 
 @click.command()
+# TODO I would like to put the correct help and other options on these
 @click.argument("source_file")
 @click.argument("out_file")
 @click.argument("num_colors")
 @click.option("--text", "-t", default=False, is_flag=True, help="")
 @click.option("--whiten", "-w", default=False, is_flag=True, help="")
-def main(source_file, out_file, num_colors, text, whiten):
+@click.option("--full", "-f", default=False, is_flag=True, help="")
+def main(source_file, out_file, num_colors, text, whiten, full):
 	print(f"reading {source_file}...")
 
 	num_colors = int(num_colors)
 
-	centroids = get_centroids(source_file, num_colors, whiten)
+	centroids = get_centroids(source_file, num_colors, whiten, full)
 
 	make_image(source_file, out_file, centroids, text)
 
