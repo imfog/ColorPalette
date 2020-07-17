@@ -23,6 +23,8 @@ def get_saturation(pixel):
 
 
 def get_best_pixel(pixels):
+	# TODO I think that to get the "right" colors I need to be looking at either the groups found or the whole image
+
 	METHOD = "MAX COLOR"
 
 	best_pixel = pixels[0]
